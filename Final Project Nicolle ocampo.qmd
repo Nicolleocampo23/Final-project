@@ -1,0 +1,181 @@
+---
+title: "Final Project"
+author: "Nicolle Ocampo"
+format: html
+editor: visual
+---
+
+## Questions
+
+1.How does the percentage of reported depression vary across different income levels ?
+
+2.Is there a significant difference in depression percentages between males and females ?
+
+```{r}
+library(tidyverse)
+library(effects)
+library(ggplot2)
+adult_depression <- read_csv("data/adult-depression-lghc-indicator-24.csv")
+
+```
+
+## Descriptive Statics
+
+**1.Histogram**
+
+```{r}
+adult_depression|>
+ggplot(aes(x = Percent)) + 
+  geom_histogram(binwidth = 2, fill = "blue", color = "black", alpha = 0.7) + 
+  labs(title = "Distribution of Depression Percentages", x = "Percentage", y = "Frequency")
+```
+
+**2.Boxplot**
+
+```{r}
+adult_depression|>
+ggplot(aes(x = `Strata Name`, y = Percent)) + 
+  geom_boxplot(fill = "lightblue") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  labs(title = "Depression Percentages by Demographic Groups", x = "Demographic Groups", y = "Percentage")
+```
+
+## **3.Scatter plot**
+
+```{r}
+adult_depression|>
+ggplot(aes(x = `Weighted Frequency`, y = Percent)) + 
+  geom_point(color = "red") + 
+  labs(title = "Scatterplot of Weighted Frequency vs Depression Percentage", x = "Weighted Frequency", y = "Depression Percentage")
+
+```
+
+## **4.Summarize Data**
+
+```{r}
+adult_depression|>
+  group_by(`Strata Name`) |>
+  summarize(Mean = mean(Percent, na.rm = TRUE),
+    SD = sd(Percent, na.rm = TRUE),
+    Min = min(Percent, na.rm = TRUE),
+    Max = max(Percent, na.rm = TRUE))
+```
+
+# **Inferential Statics**
+
+## **1.T-test**
+
+```{r}
+sex<- adult_depression |>
+  filter(Strata == "Sex") %>%
+  select(`Strata Name`, Percent)
+ t.test(Percent ~ `Strata Name`, data = sex)
+
+```
+
+**Interpretations:**
+
+**1.p-value = 0.0009488**
+
+-   This very low p-value (\< 0.05) indicates strong statistical significance.
+
+-   We reject the null hypothesis, meaning there is a significant difference in depression percentages between males and females.
+
+-   This difference is unlikely due to random chance.
+
+**2.Mean Depression Percentages:**
+
+-   Females: 17.88%
+
+-   Males: 11.04%
+
+-   This suggests that females, on average, report higher depression percentages than males.
+
+**3.t-Statistic (t = 4.5112):**
+
+-   This value represents the test statistic, which measures the difference between the two group means relative to variability in the data.
+
+-   A larger absolute t-value suggests a stronger difference between groups.
+
+## **2.Anova**
+
+whats the Null hypothesis?
+
+```{r}
+anova_result <- aov(Percent ~ `Strata Name`, data =adult_depression)
+summary(anova_result)
+```
+
+**Interpretations:**
+
+**1.p-value (\< 2e-16)**
+
+-   The extremely small p-value (\< 0.0000000000000002) indicates that the observed differences between groups are highly statistically significant.
+
+-   This rejects the null hypothesis, confirming that depression percentages differ significantly across demographic groups.
+
+**2.F-value (F = 9.684)**
+
+-   This ratio (92.98 / 9.60) determines whether differences between groups are significantly larger than random variation within groups.
+
+-   A higher F-value suggests strong evidence that at least one group differs from the others.
+
+**3.Mean Square (Mean Sq)**
+
+-   92.98 for Strata Name: This is the average variability between groups.
+
+-   9.60 for Residuals: This is the average variation within each group.
+
+statistically significant difference in depression percentages between males and females, with females reporting higher depression levels. The findings suggest that gender may play a role in depression prevalence, which could have important implications for mental health policies and interventions.
+
+## **3.Linear Regression**
+
+```{r}
+gender <- adult_depression |>
+  filter(Strata == "Sex") |>
+  mutate(Gender_Binary = ifelse(`Strata Name` == "Female", 1, 0))  # Convert Male = 0, Female = 1
+lm_model <- lm(Percent ~ Gender_Binary, data = gender)
+summary(lm_model)
+
+
+
+```
+
+**Interpretation:**
+
+-   The low p-value (\< 0.05) confirms that gender has a statistically significant effect on depression percentages.
+
+-   Females have significantly higher reported depression percentages compared to males.
+
+-   Gender explains a substantial portion of variation in depression rates, but other factors may contribute.
+
+-   The model is statistically strong, supporting the hypothesis that gender impacts depression percentages in this data.
+
+**Gender_Binary (Estimate = 6.846, p = 0.000713)**
+
+-   This value indicates how depression percentage changes when shifting from male (0) to female (1).
+
+-   Since the coefficient is positive (6.846), it means that females have, on average, a 6.85 percentage point higher depression rate than males.
+
+-   This result is highly significant (p-value \< 0.001), meaning gender strongly influences depression rates.
+
+# **Plotting Effects**
+
+```{r}
+library(effects)
+effect_data <- as.data.frame(effect("Gender_Binary", lm_model))
+ggplot(effect_data, aes(y = fit, x = Gender_Binary, 
+                        xmin = lower, xmax = upper, 
+                        label = round(fit, 2))) +
+  geom_point(color = "blue") +
+  geom_errorbar(width = 0.2, color = "red") +
+  geom_label() +
+  labs(title = "Effect of Gender on Depression Percentage",
+       x = "Gender (Male = 0, Female = 1)", y = "Estimated Depression Percentage")
+```
+
+# **Conclusion**
+
+-   In this analysis, I examined the percentage of reported depression across different demographic factors, including income levels and gender. The descriptive analysis included histograms, boxplots, and scatterplots to visualize the distribution of depression percentages. A summary of statistics provided key insights into the mean, standard deviation, minimum, and maximum depression percentages across demographic groups. For inferential analysis, I conducted a two-sample t-test to determine whether depression rates significantly differ between males and females. Additionally, an ANOVA test was performed to assess whether depression percentages vary significantly among different demographic groups. A linear regression model was used to examine the relationship between gender and depression percentages, with gender encoded as a binary predictor.
+
+-   The findings indicated that depression percentages differ significantly across income levels and gender. Lower-income groups consistently reported higher depression rates, suggesting a potential socioeconomic influence on mental health. The t-test revealed a statistically significant difference between males and females, with females reporting higher depression percentages on average (17.88% vs. 11.04% for males, p \< 0.001). The ANOVA test confirmed that depression rates vary significantly among demographic groups, further supporting the idea that factors like age, education, and race may contribute to mental health disparities. Lastly, the linear regression analysis showed that gender is a significant predictor of depression percentages, with females experiencing higher rates (coefficient = 6.85, p \< 0.001). These findings highlight the importance of considering socioeconomic and demographic factors in mental health research and interventions. Let me know if you need additional refinements!
